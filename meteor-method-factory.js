@@ -1,5 +1,265 @@
-// Write your package code here!
+import {check} from 'meteor/check';
+import {ValidatedMethod} from 'meteor/mdg:validated-method';
+import {SimpleSchemaFactory} from 'meteor/jkuester:simpl-schema-factory';
+import {Roles} from 'meteor/alanning:roles';
+import {Random} from 'meteor/random';
+import {DDPRateLimiter} from 'meteor/ddp-rate-limiter';
+import {_} from 'meteor/underscore';
 
-// Variables exported by this module can be imported by other packages and
-// applications. See meteor-method-factory-tests.js for an example of importing.
-export const name = 'meteor-method-factory';
+export const MethodFactory = {
+
+	//////////////////////////////////////////////////////////////////////////////////////////////////
+	//
+	//  ERRORS
+	//
+	//////////////////////////////////////////////////////////////////////////////////////////////////
+
+	errors: {
+		DOCUMENT_NOT_FOUND:"no document found by given id",
+		PERMISSION_NOT_LOGGED_IN: "Permission denied for not logged in users.",
+		PERMISSION_NOT_IN_ROLES: "Permission denied, user has no roles for using this feature",
+		PERMISSION_NOT_EXPECTED_USER: "Permission denies, you are not the expected user",
+		PERMISSION_NOT_REGISTERED_USER: "Permission denied, you are not a registered user.",
+		PERMISSION_NO_ADMIN: "Permission denied for non admins.",
+		UNEXPECTED: "Unexpected code reach. The code should never reach this point.",
+
+		MISSING_SCHEMA:"Collection is missing a schema to validate insert/update",
+
+		EXECUTION_SERVER_ONLY: "This code is server side and cannot be executed on the client",
+		EXECUTION_CLIENT_ONLY: "This code is client side and cannot be executed on the server",
+		WRONG_PARAMETER_TYPE: "Wrong parameter type provided.",
+
+		INSERT_FAILED_DOC_EXISTS: "Insert failed. The document already exists. Use an update-method to update or replace the existing document",
+	},
+
+	//////////////////////////////////////////////////////////////////////////////////////////////////
+	//
+	//  HELPERS
+	//
+	//////////////////////////////////////////////////////////////////////////////////////////////////
+
+	checkUser(userId) {
+		if (!userId) {
+			throw new Meteor.Error(this.errors.PERMISSION_NOT_LOGGED_IN);
+		}
+		if (typeof userId !== 'string') {
+			throw new Meteor.Error(this.errors.WRONG_PARAMETER_TYPE);
+		}
+
+		if (!Meteor.users.findOne({_id: userId})) {
+			throw new Meteor.Error(this.errors.PERMISSION_NOT_REGISTERED_USER);
+		}
+		return true;
+	},
+
+	checkCollection(collection) {
+		check(collection, Mongo.Collection);
+		if (!collection.schema) throw new Meteor.Error(this.errors.MISSING_SCHEMA)
+	},
+
+	checkDoc(docId, collection){
+		check(docId, String);
+		check(collection, Mongo.Collection);
+		const doc = collection.findOne(docId);
+		if (!doc) throw this.errors.DOCUMENT_NOT_FOUND;
+		return doc;
+	},
+
+	updateLastEdit(userId, docId, context, title, timeStamp) {
+		check(userId, String);
+		check(docId, String);
+		check(context, String);
+		check(title, String);
+		check(timeStamp, Number);
+		const summary = {_id:docId, title:title, context:context, timeStamp:timeStamp};
+		let update;
+		if (!Meteor.user().lastEdited){
+			update = {$set: {lastEdited:[summary]}};
+		}else{
+			update = {$push: {lastEdited:summary}};
+		}
+		return Meteor.users.update({_id:userId}, update);
+	},
+
+	//////////////////////////////////////////////////////////////////////////////////////////////////
+	//
+	//  COLLECTION METHODS
+	//
+	//////////////////////////////////////////////////////////////////////////////////////////////////
+
+	getInsertMethodDefault(collection, methodName){
+		this.checkCollection(collection);
+		return new ValidatedMethod({
+			name: methodName,
+			validate: collection.schema.validator(),
+			applyOptions: {
+				noRetry: true,
+			},
+			//roles: [], //TODO
+			run(insertDoc){
+				MethodFactory.checkUser(this.userId);
+
+				if (insertDoc._id && collection.findOne(insertDoc._id))
+					throw new Meteor.Error(this.errors.INSERT_FAILED_DOC_EXISTS)
+
+				return collection.insert(insertDoc, null);
+			}
+		});
+	},
+
+	getUpdateMethodDefault(collection, methodName){
+		this.checkCollection(collection);
+		return new ValidatedMethod({
+			name: methodName,
+			validate: collection.schema.validator(),
+			//roles: [], //TODO
+			run(updateDoc) {
+				MethodFactory.checkUser(this.userId);
+
+				const docId = updateDoc._id;
+				MethodFactory.checkDoc(docId, collection);
+
+				return collection.update({_id: docId}, {$set: updateDoc}); //TODO use replaceOne in Mongo 3.2
+			},
+		});
+	},
+
+	getRemoveMethodDefault(collection, methodName){
+		return new ValidatedMethod({
+			name: methodName,
+			validate: SimpleSchemaFactory.docId().validator(),
+			//roles: [], //TODO
+			run(removeDoc) {
+				const docId = removeDoc._id;
+				MethodFactory.checkUser(this.userId);
+				MethodFactory.checkDoc(docId, collection);
+				return collection.remove(docId);
+			},
+		});
+
+	},
+
+
+	getFindOneMethodDefault(collection, methodName) {
+		return new ValidatedMethod({
+			name: methodName,
+			validate: SimpleSchemaFactory.custom({
+				_id: {type:String},
+			}).validator(),
+			//roles: [], //TODO
+			run(docId) {
+				MethodFactory.checkUser(this.userId);
+				const doc = collection.findOne(docId);
+				// need further checks here?
+				return doc;
+			},
+		});
+	},
+
+
+	/**
+	 * Adds method rules to DDPRateLimiter
+	 * @param methods {Array}
+	 * @param maxCount {Number}
+	 * @param timeOut {Number}
+	 * @returns {boolean}
+	 */
+	rateLimit(methods, maxCount = 5, timeOut = 1000) {
+		//check({methods:[String],});
+		if (!Meteor.isServer)
+			throw new Meteor.Error(this.errors.EXECUTION_SERVER_ONLY);
+
+		// Get list of all method names on Lists
+		const METHODS = _.pluck(methods, 'name');
+
+		// Only allow 5 list operations per connection per second (1000ms)
+		DDPRateLimiter.addRule({
+			name(name) {
+				return METHODS.indexOf(name) > -1;
+			},
+			// Rate limit per connection ID
+			connectionId() { return true; },
+		}, maxCount, timeOut);
+	},
+
+	//////////////////////////////////////////////////////////////////////////////////////////////////
+	//
+	//  ALLOW/DENY METHODS
+	//
+	//////////////////////////////////////////////////////////////////////////////////////////////////
+
+	getDefaultAllowSettings(collection, roles, domain) {
+		return {
+			insert: this.getAllowInsert(collection, roles, domain),
+			update: this.getAllowUpdate(collection, roles, domain),
+			remove: this.getAllowRemove(collection, roles, domain),
+		};
+	},
+
+
+	getAllowInsert(collection, roles, domain) {
+		this.checkCollection(collection);
+		return function (userId, doc) {
+
+			// check if user is a valid user in this system
+			MethodFactory.checkUser(userId);
+
+			//check user and roles
+			if (!Roles.userIsInRole(userId, roles, domain))
+				throw new Meteor.Error(MethodFactory.errors.PERMISSION_NOT_IN_ROLES);
+
+			//validate doc by Schema
+			//return false if failed
+			const vc = collection.schema.newContext();
+			vc.clean(doc);
+			vc.validate(doc);
+			return vc.isValid();
+		};
+	},
+
+	getAllowUpdate(collection, roles, domain) {
+		this.checkCollection(collection);
+		return function (userId, doc) {
+
+			MethodFactory.checkUser(userId);
+
+			//check user and roles
+			if (!Roles.userIsInRole(userId, roles, domain))
+				throw new Meteor.Error(MethodFactory.errors.PERMISSION_NOT_IN_ROLES);
+
+			MethodFactory.checkDoc(doc._id, collection);
+
+			// delete _id because
+			// otherwise schema validation fails
+			delete doc._id;
+
+			//validate doc by Schema
+			//return false if failed
+			const vc = collection.schema.newContext();
+			vc.clean(doc);
+			vc.validate(doc);
+			return vc.isValid();
+		};
+	},
+
+	getAllowRemove(collection, roles, domain) {
+		this.checkCollection(collection);
+		return function (userId, doc) {
+
+			MethodFactory.checkUser(userId);
+
+			//check user and roles
+			if (!Roles.userIsInRole(userId, roles, domain))
+				throw new Meteor.Error(MethodFactory.errors.PERMISSION_NOT_IN_ROLES);
+
+			MethodFactory.checkDoc(doc._id, collection);
+
+			//validate doc by Schema
+			//return false if failed
+			const vc = collection.schema.newContext();
+			vc.validate(doc);
+			return vc.isValid();
+		};
+	},
+};
+
