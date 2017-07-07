@@ -30,7 +30,12 @@ export const MethodFactory = {
 		WRONG_PARAMETER_TYPE: "Wrong parameter type provided.",
 
 		INSERT_FAILED_DOC_EXISTS: "Insert failed. The document already exists. Use an update-method to update or replace the existing document",
+
+
+
 		SCHEMA_NOT_CONFORM:"Schema is not a proper SimpleSchema instance",
+		VALIDATION_MISSING_ID:"validation failed, missing _id",
+		VALIDATION_MISSING_MODIFIER:"validation failed, missing modifier",
 	},
 
 	//////////////////////////////////////////////////////////////////////////////////////////////////
@@ -136,11 +141,20 @@ export const MethodFactory = {
 
 		return new ValidatedMethod({
 			name: methodName,
-			validate: SimpleSchemaFactory.custom({
-				_id:String,
-				modifier:Object,
-				'modifier.$set':collection.schema,
-			}).validator(),
+			validate(args) {
+				console.log("validate:", args);
+				const docId = args._id;
+				const modifier = args.modifier;
+				if (!docId)
+					throw new Meteor.Error(methodName + " validation error - _id is required");
+				if (!modifier)
+					throw new Meteor.Error(methodName + " validation error - modifier is required");
+				if (!modifier.$set && !modifier.$unset)
+					throw new Meteor.Error(methodName + " validation error - $set / $unset");
+
+				const updateDoc = modifier.$set ? modifier.$set : modifier.$unset;
+				collection.schema.validate(updateDoc)
+			},
 			//roles: [], //TODO
 			run(updateDoc) {
 				MethodFactory.checkUser(this.userId);
