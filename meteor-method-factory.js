@@ -119,13 +119,13 @@ export const MethodFactory = {
 
 		return new ValidatedMethod({
 			name: methodName,
-			validate: collection.schema.validator({clean:true}),
+			validate: collection.schema.validator(),
 			//roles: [], //TODO
-			run(docId, updateDoc) {
+			run(updateDoc) {
 				MethodFactory.checkUser(this.userId);
-				console.log(methodName+": user check passed");
+				const docId = updateDoc._id;
 				MethodFactory.checkDoc(docId, collection);
-				console.log(methodName+": doc check passed");
+				delete  updateDoc._id;
 				return collection.update({_id: docId}, {$set: updateDoc}); //TODO use replaceOne in Mongo 3.2
 			},
 		});

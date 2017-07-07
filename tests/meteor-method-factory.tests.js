@@ -36,7 +36,7 @@ if (Meteor.isServer) {
 	});
 
 
-	const testMethodDefaults = function (method, userId, params) {
+	const testMethodDefaults = function (method, userId, param1) {
 		//wrong schema
 		assert.throws(function () {
 			method._execute({userId}, {});
@@ -44,12 +44,12 @@ if (Meteor.isServer) {
 
 		//no user logged in
 		assert.throws(function () {
-			method._execute({userId: null}, params);
+			method._execute({userId: null}, param1);
 		}, MethodFactory.errors.PERMISSION_NOT_LOGGED_IN);
 
 		//user not registered
 		assert.throws(function () {
-			method._execute({userId: Random.id(17)}, params);
+			method._execute({userId: Random.id(17)}, param1);
 		}, MethodFactory.errors.PERMISSION_NOT_REGISTERED_USER);
 	};
 
@@ -67,21 +67,21 @@ if (Meteor.isServer) {
 		}, MethodFactory.errors.PERMISSION_NOT_IN_ROLES);
 	};
 
-	describe("MethodFactory", () => {
+	describe("MethodFactory", function () {
 
 		let userId;
 
-		beforeEach(() => {
+		beforeEach(function () {
 			Meteor.users.remove({username: "john doe"});
 			userId = Accounts.createUser({username: "john doe"});
 			DummyCollection.remove({});
 		});
 
-		afterEach(() => {
+		afterEach(function () {
 			Meteor.users.remove(userId);
 		});
 
-		it("creates checkUser", () => {
+		it("creates checkUser", function () {
 			assert.throws(function () {
 				MethodFactory.checkUser();
 			}, MethodFactory.errors.PERMISSION_NOT_LOGGED_IN);
@@ -98,7 +98,7 @@ if (Meteor.isServer) {
 			assert.isTrue(shouldBeTrue);
 		});
 
-		it("creates checkDoc", () => {
+		it("creates checkDoc", function () {
 			const dummyDoc = Factory.create("dummy");
 			MochaHelpers.isDefined(dummyDoc, 'object');
 
@@ -111,7 +111,7 @@ if (Meteor.isServer) {
 			}, MethodFactory.errors.DOCUMENT_NOT_FOUND);
 		});
 
-		it("creates getInsertMethodDefault", () => {
+		it("creates getInsertMethodDefault", function () {
 			const INSERT_METHOD_NAME = "dummy.methods.insert";
 			MochaHelpers.removeMethod(INSERT_METHOD_NAME);
 
@@ -139,7 +139,7 @@ if (Meteor.isServer) {
 
 		});
 
-		it("creates getUpdateMethodDefault", () => {
+		it("creates getUpdateMethodDefault", function () {
 			const UPDATE_METHOD_NAME = "dummy.methods.update";
 			MochaHelpers.removeMethod(UPDATE_METHOD_NAME);
 
@@ -153,20 +153,55 @@ if (Meteor.isServer) {
 			const docId = insertDoc._id;
 			const oldTitle = insertDoc.title;
 			insertDoc.title = "new title";
+
+
 			testMethodDefaults(updateMethod, userId, insertDoc);
 
 			// default expected behavior
 			updateMethod._execute({userId}, insertDoc);
 
-
 			const updatedDoc = DummyCollection.findOne(docId);
-			MochaHelpers.isDefined(updatedDoc, 'object');
 
+			MochaHelpers.isDefined(updatedDoc, 'object');
 			assert.equal(updatedDoc.title, insertDoc.title);
 			assert.notEqual(updatedDoc.title, oldTitle)
 		});
 
-		it("creates getRemoveMethodDefault", () => {
+		it("creates getAutoFormUpdateMethod", function () {
+			const UPDATE_METHOD_NAME = "dummy.methods.autoformupdate";
+			MochaHelpers.removeMethod(UPDATE_METHOD_NAME);
+
+			const updateMethod = MethodFactory.getAutoFormUpdateMethod(DummyCollection, UPDATE_METHOD_NAME);
+
+			const insertDoc = Factory.create("dummy", {
+				title: "some title",
+				description: "some description",
+				code: "0815",
+			});
+			const docId = insertDoc._id;
+			const oldTitle = insertDoc.title;
+			insertDoc.title = "new title";
+			delete insertDoc._id;
+
+			// conform according to
+			// the autoform documentation
+			const autformUpdateDoc = {
+				_id: docId,
+				modifier: {$set: insertDoc,}
+			}
+
+			testMethodDefaults(updateMethod, userId, autformUpdateDoc);
+
+			// default expected behavior
+			updateMethod._execute({userId}, autformUpdateDoc);
+
+			const updatedDoc = DummyCollection.findOne(docId);
+			MochaHelpers.isDefined(updatedDoc, 'object');
+			assert.equal(updatedDoc.title, insertDoc.title);
+			assert.notEqual(updatedDoc.title, oldTitle)
+		});
+
+		it("creates getRemoveMethodDefault", function () {
 			const REMOVE_METHOD_NAME = "dummy.methods.remove";
 			MochaHelpers.removeMethod(REMOVE_METHOD_NAME);
 
@@ -204,12 +239,12 @@ if (Meteor.isServer) {
 
 			const connection = DDP.connect(Meteor.absoluteUrl());
 
-			_.times(maxCount, () => {
+			_.times(maxCount, function () {
 				connection.call(testMethod.name, insertDoc);
 			});
 
-			assert.throws(() => {
-				_.times(maxCount, () => {
+			assert.throws(function () {
+				_.times(maxCount, function () {
 					connection.call(testMethod.name, insertDoc);
 				});
 			}, Meteor.Error, /too-many-requests/);
@@ -236,19 +271,16 @@ if (Meteor.isServer) {
 			Roles.addUsersToRoles(userId, ["update"], "testDomain");
 			const updateDoc = MochaHelpers.getDefaultPropsWith({_id: Random.id(17)});
 
-			console.log("before throw")
 			assert.throws(function () {
 				update(userId, updateDoc);
 			}, MethodFactory.errors.DOCUMENT_NOT_FOUND);
 
-			console.log("before insertDoc")
 			const insertDoc = Factory.create("dummy", {
 				title: "some title",
 				description: "some description",
 				code: "0815",
 			});
 
-			console.log("before update");
 			assert.isTrue(update(userId, insertDoc));
 		});
 

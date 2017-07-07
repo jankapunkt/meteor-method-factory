@@ -11,7 +11,7 @@ binary-heap@1.0.10
 blaze@2.3.2
 blaze-html-templates@1.1.2
 blaze-tools@1.0.10
-boilerplate-generator@1.1.0
+boilerplate-generator@1.1.1
 caching-compiler@1.1.9
 caching-html-compiler@1.1.2
 callback-hook@1.0.10
@@ -42,9 +42,9 @@ html-tools@1.0.11
 htmljs@1.0.11
 http@1.2.12
 id-map@1.0.9
-jkuester:meteor-collection-factory@0.0.1
-jkuester:meteor-method-factory@0.0.1
-jkuester:meteor-mocha-helpers@0.0.1
+jkuester:meteor-collection-factory@0.1.1
+jkuester:meteor-method-factory@0.1.0
+jkuester:meteor-mocha-helpers@0.1.1
 jkuester:simpl-schema-factory@0.0.1
 johanbrook:publication-collector@1.0.9
 jquery@1.11.10
