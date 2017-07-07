@@ -30,6 +30,7 @@ export const MethodFactory = {
 		WRONG_PARAMETER_TYPE: "Wrong parameter type provided.",
 
 		INSERT_FAILED_DOC_EXISTS: "Insert failed. The document already exists. Use an update-method to update or replace the existing document",
+		SCHEMA_NOT_CONFORM:"Schema is not a proper SimpleSchema instance",
 	},
 
 	//////////////////////////////////////////////////////////////////////////////////////////////////
@@ -50,6 +51,11 @@ export const MethodFactory = {
 			throw new Meteor.Error(this.errors.PERMISSION_NOT_REGISTERED_USER);
 		}
 		return true;
+	},
+
+	checkSchema(schema){
+		if (!SimpleSchemaFactory.isSimpleSchema(schema))
+			throw new Meteor.Error(this.errors.SCHEMA_NOT_CONFORM);
 	},
 
 	checkCollection(collection) {
@@ -87,8 +93,9 @@ export const MethodFactory = {
 	//
 	//////////////////////////////////////////////////////////////////////////////////////////////////
 
-	getInsertMethodDefault(collection, methodName){
+	getInsertMethodDefault(collection, methodName, ){
 		this.checkCollection(collection);
+
 		return new ValidatedMethod({
 			name: methodName,
 			validate: collection.schema.validator(),
@@ -109,17 +116,37 @@ export const MethodFactory = {
 
 	getUpdateMethodDefault(collection, methodName){
 		this.checkCollection(collection);
+
 		return new ValidatedMethod({
 			name: methodName,
-			validate: collection.schema.validator(),
+			validate: collection.schema.validator({clean:true}),
+			//roles: [], //TODO
+			run(docId, updateDoc) {
+				MethodFactory.checkUser(this.userId);
+				console.log(methodName+": user check passed");
+				MethodFactory.checkDoc(docId, collection);
+				console.log(methodName+": doc check passed");
+				return collection.update({_id: docId}, {$set: updateDoc}); //TODO use replaceOne in Mongo 3.2
+			},
+		});
+	},
+
+	getAutoFormUpdateMethod(collection, methodName) {
+		this.checkCollection(collection);
+
+		return new ValidatedMethod({
+			name: methodName,
+			validate: SimpleSchemaFactory.custom({
+				_id:String,
+				modifier:Object,
+				'modifier.$set':collection.schema,
+			}).validator(),
 			//roles: [], //TODO
 			run(updateDoc) {
 				MethodFactory.checkUser(this.userId);
-
 				const docId = updateDoc._id;
 				MethodFactory.checkDoc(docId, collection);
-
-				return collection.update({_id: docId}, {$set: updateDoc}); //TODO use replaceOne in Mongo 3.2
+				return collection.update({_id: docId}, updateDoc.modifier); //TODO use replaceOne in Mongo 3.2
 			},
 		});
 	},
@@ -143,9 +170,7 @@ export const MethodFactory = {
 	getFindOneMethodDefault(collection, methodName) {
 		return new ValidatedMethod({
 			name: methodName,
-			validate: SimpleSchemaFactory.custom({
-				_id: {type:String},
-			}).validator(),
+			validate: SimpleSchemaFactory.docId().validator(),
 			//roles: [], //TODO
 			run(docId) {
 				MethodFactory.checkUser(this.userId);
