@@ -16,11 +16,9 @@ Package.onUse(function (api) {
 	api.use('random');
 	api.use('check');
 	api.use('underscore');
+	api.use('ddp-rate-limiter');
 	api.use('mdg:validated-method');
 	api.use('alanning:roles@1.2.16');
-	api.use('ddp-rate-limiter');
-	api.use('ecmascript');
-	api.use('ecmascript');
-	api.use('jkuester:simpl-schema-factory');
+	api.use('jkuester:simpl-schema-factory@0.1.0');
 	api.mainModule('meteor-method-factory.js');
 });

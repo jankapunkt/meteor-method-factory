@@ -41,6 +41,7 @@ alanning:roles@1.2.16
 # TESTSTING
 # -------------------------------------
 practicalmeteor:mocha
+dispatch:mocha
 practicalmeteor:chai
 jkuester:meteor-mocha-helpers
 jkuester:simpl-schema-factory
