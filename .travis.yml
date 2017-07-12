@@ -23,7 +23,6 @@ install:
   - export CURRENT_PACKAGE=$(pwd)
   - cd ../
   - git clone https://github.com/jankapunkt/meteor-mocha-helpers.git
-  - git clone https://github.com/jankapunkt/meteor-mocha-helpers.git
   - git clone https://github.com/jankapunkt/mongo-collection-instances.git
   - cd $CURRENT_PACKAGE/tests
   - meteor npm install --save-dev phantomjs-prebuilt
