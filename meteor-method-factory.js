@@ -103,7 +103,13 @@ export const MethodFactory = {
 
 		return new ValidatedMethod({
 			name: methodName,
-			validate: collection.schema.validator(),
+			validate(insertDoc) {
+				try {
+					collection.schema.validate(insertDoc);
+				}catch(err) {
+					throw new Meteor.Error("500 - " + (err.name|| ""), (err.message || err.reason), JSON.stringify(insertDoc));
+				}
+			},
 			applyOptions: {
 				noRetry: true,
 			},
@@ -124,7 +130,13 @@ export const MethodFactory = {
 
 		return new ValidatedMethod({
 			name: methodName,
-			validate: collection.schema.validator(),
+			validate(updateDoc){
+				try {
+					collection.schema.validate(updateDoc);
+				}catch(err) {
+					throw new Meteor.Error("500 - " + (err.name|| ""), (err.message || err.reason), JSON.stringify(updateDoc));
+				}
+			},
 			//roles: [], //TODO
 			run(updateDoc) {
 				MethodFactory.checkUser(this.userId);
@@ -142,7 +154,7 @@ export const MethodFactory = {
 		return new ValidatedMethod({
 			name: methodName,
 			validate(args) {
-				console.log("validate:", args);
+				//console.log("validate:", args);
 				const docId = args._id;
 				const modifier = args.modifier;
 				if (!docId)
@@ -153,7 +165,11 @@ export const MethodFactory = {
 					throw new Meteor.Error(methodName + " validation error - $set / $unset");
 
 				const updateDoc = modifier.$set ? modifier.$set : modifier.$unset;
-				collection.schema.validate(updateDoc)
+				try {
+					collection.schema.validate(updateDoc);
+				}catch(err) {
+					throw new Meteor.Error("500 - " + (err.name|| ""), (err.message || err.reason), JSON.stringify(args))
+				}
 			},
 			//roles: [], //TODO
 			run(updateDoc) {
@@ -168,7 +184,13 @@ export const MethodFactory = {
 	getRemoveMethodDefault(collection, methodName){
 		return new ValidatedMethod({
 			name: methodName,
-			validate: SimpleSchemaFactory.docId().validator(),
+			validate(removeDoc){
+				try {
+					SimpleSchemaFactory.docId().validate(removeDoc);
+				}catch(err) {
+					throw new Meteor.Error("500 - " + (err.name|| ""), (err.message || err.reason), JSON.stringify(removeDoc));
+				}
+			},
 			//roles: [], //TODO
 			run(removeDoc) {
 				const docId = removeDoc._id;
@@ -184,9 +206,16 @@ export const MethodFactory = {
 	getFindOneMethodDefault(collection, methodName) {
 		return new ValidatedMethod({
 			name: methodName,
-			validate: SimpleSchemaFactory.docId().validator(),
+			validate(findDoc){
+				try {
+					SimpleSchemaFactory.docId().validate(findDoc);
+				}catch(err) {
+					throw new Meteor.Error("500 - " + (err.name|| ""), (err.message || err.reason), JSON.stringify(findDoc));
+				}
+			},
 			//roles: [], //TODO
-			run(docId) {
+			run(findDoc) {
+				const docId = findDoc._id;
 				MethodFactory.checkUser(this.userId);
 				const doc = collection.findOne(docId);
 				// need further checks here?
