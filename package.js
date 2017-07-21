@@ -1,6 +1,6 @@
 Package.describe({
 	name: 'jkuester:meteor-method-factory',
-	version: '0.1.1',
+	version: '0.1.2',
 	// Brief, one-line summary of the package.
 	summary: 'Factory to create validated methods by given input.',
 	// URL to the Git repository containing the source code for this package.
