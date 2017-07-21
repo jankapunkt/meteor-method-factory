@@ -34,7 +34,7 @@ jkuester:meteor-method-factory
 # -------------------------------------
 aldeed:collection2-core
 dburles:collection-helpers@1.1.0
-dburles:mongo-collection-instances
+dburles:mongo-collection-instances@0.3.5
 alanning:roles@1.2.16
 
 # -------------------------------------
