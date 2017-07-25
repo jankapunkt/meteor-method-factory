@@ -228,7 +228,7 @@ export const MethodFactory = {
 	},
 
 
-	gCloneMethodDefault(collection, methodName) {
+	getCloneMethodDefault(collection, methodName) {
 		return new ValidatedMethod({
 			name: methodName,
 			validate(cloneDoc){
@@ -237,14 +237,12 @@ export const MethodFactory = {
 				}catch(err) {
 					throw new Meteor.Error("500 - " + (err.name|| ""), (err.message || err.reason), JSON.stringify(cloneDoc));
 				}
-				const docToClone = collection.findOne(cloneDoc);
-				if (!docToClone)
-					throw new Meteor.Error("500 - Server Error", "Could not find doc to clone.", JSON.stringify(cloneDoc));
 			},
 			//roles: [], //TODO
 			run(cloneDoc) {
-				const docId = cloneDoc._id;
 				MethodFactory.checkUser(this.userId);
+				const docId = cloneDoc._id;
+				MethodFactory.checkDoc(docId, collection)
 				const doc = collection.findOne(docId);
 				delete doc._id;
 				return collection.insert(doc);

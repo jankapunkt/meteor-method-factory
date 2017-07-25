@@ -222,6 +222,39 @@ if (Meteor.isServer) {
 			assert.equal(DummyCollection.find({}).count(), 0);
 		});
 
+		it("creates getCloneMethodDefault", function () {
+			const CLONE_METHOD_NAME = "dummy-methods.clone";
+			const cloneMethod = MethodFactory.getCloneMethodDefault(DummyCollection, CLONE_METHOD_NAME);
+			testMethodDefaults(cloneMethod, userId, {_id: Random.id(17)});
+
+			const insertDocId = DummyCollection.insert({
+				title: "to be cloned",
+				description: "some description",
+				code: "0815",
+			});
+
+			const insertDoc = DummyCollection.findOne({_id: insertDocId});
+			MochaHelpers.isDefined(insertDoc, MochaHelpers.OBJECT);
+
+			// we should have just this one doc in the collection
+			assert.equal(DummyCollection.find({}).count(), 1);
+
+			const cloneResult = cloneMethod._execute({userId}, {_id: insertDoc._id});
+
+			// now it should be two
+			assert.equal(DummyCollection.find({}).count(), 2);
+
+			const clonedDoc = DummyCollection.findOne({_id: cloneResult});
+
+			assert.equal(clonedDoc.title, insertDoc.title);
+			assert.equal(clonedDoc.description, insertDoc.description);
+			assert.equal(clonedDoc.code, insertDoc.code);
+
+			assert.throws(function () {
+				cloneMethod._execute({userId}, {_id: Random.id()});
+			}, MethodFactory.errors.DOCUMENT_NOT_FOUND);
+		});
+
 		it('rateLimit does not allow more than X operations rapidly', function () {
 
 
