@@ -98,12 +98,15 @@ export const MethodFactory = {
 	//
 	//////////////////////////////////////////////////////////////////////////////////////////////////
 
-	getInsertMethodDefault(collection, methodName, ){
+	getInsertMethodDefault(collection, methodName, validationHook){
 		this.checkCollection(collection);
 
 		return new ValidatedMethod({
 			name: methodName,
 			validate(insertDoc) {
+				if (validationHook) {
+					validationHook(insertDoc);
+				}
 				try {
 					collection.schema.validate(insertDoc);
 				}catch(err) {
@@ -224,6 +227,30 @@ export const MethodFactory = {
 		});
 	},
 
+
+	gCloneMethodDefault(collection, methodName) {
+		return new ValidatedMethod({
+			name: methodName,
+			validate(cloneDoc){
+				try {
+					SimpleSchemaFactory.docId().validate(cloneDoc);
+				}catch(err) {
+					throw new Meteor.Error("500 - " + (err.name|| ""), (err.message || err.reason), JSON.stringify(cloneDoc));
+				}
+				const docToClone = collection.findOne(cloneDoc);
+				if (!docToClone)
+					throw new Meteor.Error("500 - Server Error", "Could not find doc to clone.", JSON.stringify(cloneDoc));
+			},
+			//roles: [], //TODO
+			run(cloneDoc) {
+				const docId = cloneDoc._id;
+				MethodFactory.checkUser(this.userId);
+				const doc = collection.findOne(docId);
+				delete doc._id;
+				return collection.insert(doc);
+			},
+		});
+	},
 
 	/**
 	 * Adds method rules to DDPRateLimiter
