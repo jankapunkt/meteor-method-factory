@@ -76,22 +76,6 @@ export const MethodFactory = {
 		return doc;
 	},
 
-	updateLastEdit(userId, docId, context, title, timeStamp) {
-		check(userId, String);
-		check(docId, String);
-		check(context, String);
-		check(title, String);
-		check(timeStamp, Number);
-		const summary = {_id:docId, title:title, context:context, timeStamp:timeStamp};
-		let update;
-		if (!Meteor.user().lastEdited){
-			update = {$set: {lastEdited:[summary]}};
-		}else{
-			update = {$push: {lastEdited:summary}};
-		}
-		return Meteor.users.update({_id:userId}, update);
-	},
-
 	//////////////////////////////////////////////////////////////////////////////////////////////////
 	//
 	//  COLLECTION METHODS
@@ -195,7 +179,7 @@ export const MethodFactory = {
 				}
 			},
 			//roles: [], //TODO
-			run(removeDoc) {
+			run(``) {
 				const docId = removeDoc._id;
 				MethodFactory.checkUser(this.userId);
 				MethodFactory.checkDoc(docId, collection);
