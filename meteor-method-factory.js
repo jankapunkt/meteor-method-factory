@@ -179,7 +179,7 @@ export const MethodFactory = {
 				}
 			},
 			//roles: [], //TODO
-			run(``) {
+			run(removeDoc) {
 				const docId = removeDoc._id;
 				MethodFactory.checkUser(this.userId);
 				MethodFactory.checkDoc(docId, collection);
