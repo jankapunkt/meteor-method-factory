@@ -255,6 +255,34 @@ if (Meteor.isServer) {
 			}, MethodFactory.errors.DOCUMENT_NOT_FOUND);
 		});
 
+		it("creates getCountMethodDefault", function () {
+			const COUNT_METHOD = "dummy-methods.count";
+			const countMethod = MethodFactory.getCountMethodDefault(DummyCollection, COUNT_METHOD);
+			testMethodDefaults(countMethod, userId, {_id: Random.id(17)});
+
+
+			const expectedIntialCount = DummyCollection.find().count();
+			const actualInitialCount = countMethod._execute({userId}, {});
+
+			assert.equal(actualInitialCount, expectedIntialCount);
+
+			const insertDocId = DummyCollection.insert({
+				title: "to be counted",
+				description: "some description",
+				code: "0815",
+			});
+
+			const insertDoc = DummyCollection.findOne({_id: insertDocId});
+			MochaHelpers.isDefined(insertDoc, MochaHelpers.OBJECT);
+
+
+			const expectedNextCount = DummyCollection.find().count();
+			assert.isAbove(expectedNextCount, expectedIntialCount);
+
+			const actualNextCount = countMethod._execute({userId}, {});
+			assert.equal(actualNextCount, expectedNextCount);
+		});
+
 		it('rateLimit does not allow more than X operations rapidly', function () {
 
 

@@ -28,6 +28,7 @@ export const MethodFactory = {
 		EXECUTION_SERVER_ONLY: "This code is server side and cannot be executed on the client",
 		EXECUTION_CLIENT_ONLY: "This code is client side and cannot be executed on the server",
 		WRONG_PARAMETER_TYPE: "Wrong parameter type provided.",
+		WRONT_ARGUMENTS:"Wrong arguments provided.",
 
 		INSERT_FAILED_DOC_EXISTS: "Insert failed. The document already exists. Use an update-method to update or replace the existing document",
 
@@ -83,6 +84,7 @@ export const MethodFactory = {
 	//////////////////////////////////////////////////////////////////////////////////////////////////
 
 	getInsertMethodDefault(collection, methodName, validationHook){
+
 		this.checkCollection(collection);
 
 		return new ValidatedMethod({
@@ -233,6 +235,28 @@ export const MethodFactory = {
 			},
 		});
 	},
+
+
+	getCountMethodDefault(collection, methodName) {
+		return new ValidatedMethod({
+			name: methodName,
+			validate(query){
+				if (!query || typeof query !== 'object')
+					throw new Meteor.Error("500", MethodFactory.errors.WRONG_PARAMETER_TYPE);
+				const schemaKeys = collection.schema._schemaKeys;
+				const queryKeys  = Object.keys(query);
+				for (let key of queryKeys) {
+					if (schemaKeys.indexOf(key) === -1)
+						throw new Meteor.Error("500", MethodFactory.errors.WRONT_ARGUMENTS, JSON.stringify(query) +" -> not in -> " + JSON.stringify(collection.schema._schemaKeys));
+				}
+			},
+			run(query) {
+				MethodFactory.checkUser(this.userId);
+				return collection.find(query).count();
+			},
+		});
+	},
+
 
 	/**
 	 * Adds method rules to DDPRateLimiter
