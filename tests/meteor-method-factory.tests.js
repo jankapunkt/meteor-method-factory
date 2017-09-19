@@ -258,8 +258,25 @@ if (Meteor.isServer) {
 		it("creates getCountMethodDefault", function () {
 			const COUNT_METHOD = "dummy-methods.count";
 			const countMethod = MethodFactory.getCountMethodDefault(DummyCollection, COUNT_METHOD);
-			testMethodDefaults(countMethod, userId, {_id: Random.id(17)});
+			//wrong schema
+			assert.throws(function () {
+				countMethod._execute({userId}, null);
+			}, MethodFactory.errors.WRONG_PARAMETER_TYPE);
 
+			//no user logged in
+			assert.throws(function () {
+				countMethod._execute({userId: null}, {});
+			}, MethodFactory.errors.PERMISSION_NOT_LOGGED_IN);
+
+			//user not registered
+			assert.throws(function () {
+				countMethod._execute({userId: Random.id(17)}, {});
+			}, MethodFactory.errors.PERMISSION_NOT_REGISTERED_USER);
+
+			//user not registered
+			assert.throws(function () {
+				countMethod._execute({userId: userId}, {weirdProp:false});
+			}, MethodFactory.errors.WRONT_ARGUMENTS);
 
 			const expectedIntialCount = DummyCollection.find().count();
 			const actualInitialCount = countMethod._execute({userId}, {});
