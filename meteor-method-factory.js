@@ -28,7 +28,7 @@ export const MethodFactory = {
 		EXECUTION_SERVER_ONLY: "This code is server side and cannot be executed on the client",
 		EXECUTION_CLIENT_ONLY: "This code is client side and cannot be executed on the server",
 		WRONG_PARAMETER_TYPE: "Wrong parameter type provided.",
-		WRONT_ARGUMENTS:"Wrong arguments provided.",
+		WRONG_ARGUMENTS:"Wrong arguments provided.",
 
 		INSERT_FAILED_DOC_EXISTS: "Insert failed. The document already exists. Use an update-method to update or replace the existing document",
 
@@ -107,7 +107,7 @@ export const MethodFactory = {
 				MethodFactory.checkUser(this.userId);
 
 				if (insertDoc._id && collection.findOne(insertDoc._id))
-					throw new Meteor.Error(this.errors.INSERT_FAILED_DOC_EXISTS)
+					throw new Meteor.Error(this.ERRORS.INSERT_FAILED_DOC_EXISTS)
 
 				return collection.insert(insertDoc, null);
 			}
@@ -247,7 +247,7 @@ export const MethodFactory = {
 				const queryKeys  = Object.keys(query);
 				for (let key of queryKeys) {
 					if (schemaKeys.indexOf(key) === -1)
-						throw new Meteor.Error("500", MethodFactory.errors.WRONT_ARGUMENTS, JSON.stringify(query) +" -> not in -> " + JSON.stringify(collection.schema._schemaKeys));
+						throw new Meteor.Error("500", MethodFactory.errors.WRONG_ARGUMENTS, JSON.stringify(query) +" -> not in -> " + JSON.stringify(collection.schema._schemaKeys));
 				}
 			},
 			run(query) {
@@ -307,7 +307,7 @@ export const MethodFactory = {
 
 			//check user and roles
 			if (!Roles.userIsInRole(userId, roles, domain))
-				throw new Meteor.Error(MethodFactory.errors.PERMISSION_NOT_IN_ROLES);
+				throw new Meteor.Error(MethodFactory.ERRORS.PERMISSION_NOT_IN_ROLES);
 
 			//validate doc by Schema
 			//return false if failed
@@ -326,7 +326,7 @@ export const MethodFactory = {
 
 			//check user and roles
 			if (!Roles.userIsInRole(userId, roles, domain))
-				throw new Meteor.Error(MethodFactory.errors.PERMISSION_NOT_IN_ROLES);
+				throw new Meteor.Error(MethodFactory.ERRORS.PERMISSION_NOT_IN_ROLES);
 
 			MethodFactory.checkDoc(doc._id, collection);
 
@@ -351,7 +351,7 @@ export const MethodFactory = {
 
 			//check user and roles
 			if (!Roles.userIsInRole(userId, roles, domain))
-				throw new Meteor.Error(MethodFactory.errors.PERMISSION_NOT_IN_ROLES);
+				throw new Meteor.Error(MethodFactory.ERRORS.PERMISSION_NOT_IN_ROLES);
 
 			MethodFactory.checkDoc(doc._id, collection);
 

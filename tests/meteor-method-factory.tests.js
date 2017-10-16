@@ -276,7 +276,7 @@ if (Meteor.isServer) {
 			//user not registered
 			assert.throws(function () {
 				countMethod._execute({userId: userId}, {weirdProp:false});
-			}, MethodFactory.errors.WRONT_ARGUMENTS);
+			}, MethodFactory.errors.WRONG_ARGUMENTS);
 
 			const expectedIntialCount = DummyCollection.find().count();
 			const actualInitialCount = countMethod._execute({userId}, {});
