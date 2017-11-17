@@ -15,7 +15,7 @@ export const MethodFactory = {
 	//////////////////////////////////////////////////////////////////////////////////////////////////
 
 	errors: {
-		DOCUMENT_NOT_FOUND:"no document found by given id",
+		DOCUMENT_NOT_FOUND: "no document found by given id",
 		PERMISSION_NOT_LOGGED_IN: "Permission denied for not logged in users.",
 		PERMISSION_NOT_IN_ROLES: "Permission denied, user has no roles for using this feature",
 		PERMISSION_NOT_EXPECTED_USER: "Permission denies, you are not the expected user",
@@ -23,20 +23,19 @@ export const MethodFactory = {
 		PERMISSION_NO_ADMIN: "Permission denied for non admins.",
 		UNEXPECTED: "Unexpected code reach. The code should never reach this point.",
 
-		MISSING_SCHEMA:"Collection is missing a schema to validate insert/update",
+		MISSING_SCHEMA: "Collection is missing a schema to validate insert/update",
 
 		EXECUTION_SERVER_ONLY: "This code is server side and cannot be executed on the client",
 		EXECUTION_CLIENT_ONLY: "This code is client side and cannot be executed on the server",
 		WRONG_PARAMETER_TYPE: "Wrong parameter type provided.",
-		WRONG_ARGUMENTS:"Wrong arguments provided.",
+		WRONG_ARGUMENTS: "Wrong arguments provided.",
 
 		INSERT_FAILED_DOC_EXISTS: "Insert failed. The document already exists. Use an update-method to update or replace the existing document",
 
 
-
-		SCHEMA_NOT_CONFORM:"Schema is not a proper SimpleSchema instance",
-		VALIDATION_MISSING_ID:"validation failed, missing _id",
-		VALIDATION_MISSING_MODIFIER:"validation failed, missing modifier",
+		SCHEMA_NOT_CONFORM: "Schema is not a proper SimpleSchema instance",
+		VALIDATION_MISSING_ID: "validation failed, missing _id",
+		VALIDATION_MISSING_MODIFIER: "validation failed, missing modifier",
 	},
 
 	//////////////////////////////////////////////////////////////////////////////////////////////////
@@ -95,8 +94,8 @@ export const MethodFactory = {
 				}
 				try {
 					collection.schema.validate(insertDoc);
-				}catch(err) {
-					throw new Meteor.Error("500 - " + (err.name|| ""), (err.message || err.reason), JSON.stringify(insertDoc));
+				} catch (err) {
+					throw new Meteor.Error("500 - " + (err.name || ""), (err.message || err.reason), JSON.stringify(insertDoc));
 				}
 			},
 			applyOptions: {
@@ -120,10 +119,13 @@ export const MethodFactory = {
 		return new ValidatedMethod({
 			name: methodName,
 			validate(updateDoc){
+				const validationDoc = Object.assign({}, updateDoc);
+
 				try {
-					collection.schema.validate(updateDoc);
-				}catch(err) {
-					throw new Meteor.Error("500 - " + (err.name|| ""), (err.message || err.reason), JSON.stringify(updateDoc));
+					delete validationDoc._id;
+					collection.schema.validate(validationDoc, {modifier: true});
+				} catch (err) {
+					throw new Meteor.Error("500 - " + (err.name || ""), (err.message || err.reason), JSON.stringify(updateDoc));
 				}
 			},
 			//roles: [], //TODO
@@ -131,8 +133,7 @@ export const MethodFactory = {
 				MethodFactory.checkUser(this.userId);
 				const docId = updateDoc._id;
 				MethodFactory.checkDoc(docId, collection);
-				delete  updateDoc._id;
-				return collection.update({_id: docId}, {$set: updateDoc}); //TODO use replaceOne in Mongo 3.2
+				return collection.update({_id: updateDoc._id}, {$set: updateDoc.$set}); //TODO use replaceOne in Mongo 3.2
 			},
 		});
 	},
@@ -156,8 +157,8 @@ export const MethodFactory = {
 				const updateDoc = modifier.$set ? modifier.$set : modifier.$unset;
 				try {
 					collection.schema.validate(updateDoc);
-				}catch(err) {
-					throw new Meteor.Error("500 - " + (err.name|| ""), (err.message || err.reason), JSON.stringify(args))
+				} catch (err) {
+					throw new Meteor.Error("500 - " + (err.name || ""), (err.message || err.reason), JSON.stringify(args))
 				}
 			},
 			//roles: [], //TODO
@@ -176,8 +177,8 @@ export const MethodFactory = {
 			validate(removeDoc){
 				try {
 					SimpleSchemaFactory.docId().validate(removeDoc);
-				}catch(err) {
-					throw new Meteor.Error("500 - " + (err.name|| ""), (err.message || err.reason), JSON.stringify(removeDoc));
+				} catch (err) {
+					throw new Meteor.Error("500 - " + (err.name || ""), (err.message || err.reason), JSON.stringify(removeDoc));
 				}
 			},
 			//roles: [], //TODO
@@ -198,8 +199,8 @@ export const MethodFactory = {
 			validate(findDoc){
 				try {
 					SimpleSchemaFactory.docId().validate(findDoc);
-				}catch(err) {
-					throw new Meteor.Error("500 - " + (err.name|| ""), (err.message || err.reason), JSON.stringify(findDoc));
+				} catch (err) {
+					throw new Meteor.Error("500 - " + (err.name || ""), (err.message || err.reason), JSON.stringify(findDoc));
 				}
 			},
 			//roles: [], //TODO
@@ -220,8 +221,8 @@ export const MethodFactory = {
 			validate(cloneDoc){
 				try {
 					SimpleSchemaFactory.docId().validate(cloneDoc);
-				}catch(err) {
-					throw new Meteor.Error("500 - " + (err.name|| ""), (err.message || err.reason), JSON.stringify(cloneDoc));
+				} catch (err) {
+					throw new Meteor.Error("500 - " + (err.name || ""), (err.message || err.reason), JSON.stringify(cloneDoc));
 				}
 			},
 			//roles: [], //TODO
@@ -244,10 +245,10 @@ export const MethodFactory = {
 				if (!query || typeof query !== 'object')
 					throw new Meteor.Error("500", MethodFactory.errors.WRONG_PARAMETER_TYPE);
 				const schemaKeys = collection.schema._schemaKeys;
-				const queryKeys  = Object.keys(query);
+				const queryKeys = Object.keys(query);
 				for (let key of queryKeys) {
 					if (schemaKeys.indexOf(key) === -1)
-						throw new Meteor.Error("500", MethodFactory.errors.WRONG_ARGUMENTS, JSON.stringify(query) +" -> not in -> " + JSON.stringify(collection.schema._schemaKeys));
+						throw new Meteor.Error("500", MethodFactory.errors.WRONG_ARGUMENTS, JSON.stringify(query) + " -> not in -> " + JSON.stringify(collection.schema._schemaKeys));
 				}
 			},
 			run(query) {
