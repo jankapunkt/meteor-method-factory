@@ -106,7 +106,7 @@ export const MethodFactory = {
 				MethodFactory.checkUser(this.userId);
 
 				if (insertDoc._id && collection.findOne(insertDoc._id))
-					throw new Meteor.Error(this.ERRORS.INSERT_FAILED_DOC_EXISTS)
+					throw new Meteor.Error(this.errors.INSERT_FAILED_DOC_EXISTS)
 
 				return collection.insert(insertDoc, null);
 			}
@@ -119,21 +119,21 @@ export const MethodFactory = {
 		return new ValidatedMethod({
 			name: methodName,
 			validate(updateDoc){
-				const validationDoc = Object.assign({}, updateDoc);
 
-				try {
-					delete validationDoc._id;
-					collection.schema.validate(validationDoc, {modifier: true});
-				} catch (err) {
-					throw new Meteor.Error("500 - " + (err.name || ""), (err.message || err.reason), JSON.stringify(updateDoc));
-				}
+				if (!updateDoc || Object.keys(updateDoc).length === 0)
+					throw new Meteor.Error("500", "updateDoc is required");
+
+				if (!updateDoc.$set && !updateDoc.$unset)
+					throw new Meteor.Error("500", "modifier like $set or $unset is required");
+
+				console.log(updateDoc);
+				collection.schema.validate(updateDoc.$set);
 			},
-			//roles: [], //TODO
 			run(updateDoc) {
 				MethodFactory.checkUser(this.userId);
 				const docId = updateDoc._id;
 				MethodFactory.checkDoc(docId, collection);
-				return collection.update({_id: updateDoc._id}, {$set: updateDoc.$set}); //TODO use replaceOne in Mongo 3.2
+				return collection.update({_id: docId}, {$set: updateDoc.$set}); //TODO use replaceOne in Mongo 3.2
 			},
 		});
 	},
@@ -308,7 +308,7 @@ export const MethodFactory = {
 
 			//check user and roles
 			if (!Roles.userIsInRole(userId, roles, domain))
-				throw new Meteor.Error(MethodFactory.ERRORS.PERMISSION_NOT_IN_ROLES);
+				throw new Meteor.Error(MethodFactory.errors.PERMISSION_NOT_IN_ROLES);
 
 			//validate doc by Schema
 			//return false if failed
@@ -327,7 +327,7 @@ export const MethodFactory = {
 
 			//check user and roles
 			if (!Roles.userIsInRole(userId, roles, domain))
-				throw new Meteor.Error(MethodFactory.ERRORS.PERMISSION_NOT_IN_ROLES);
+				throw new Meteor.Error(MethodFactory.errors.PERMISSION_NOT_IN_ROLES);
 
 			MethodFactory.checkDoc(doc._id, collection);
 
@@ -352,7 +352,7 @@ export const MethodFactory = {
 
 			//check user and roles
 			if (!Roles.userIsInRole(userId, roles, domain))
-				throw new Meteor.Error(MethodFactory.ERRORS.PERMISSION_NOT_IN_ROLES);
+				throw new Meteor.Error(MethodFactory.errors.PERMISSION_NOT_IN_ROLES);
 
 			MethodFactory.checkDoc(doc._id, collection);
 

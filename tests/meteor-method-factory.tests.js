@@ -150,20 +150,29 @@ if (Meteor.isServer) {
 				description: "some description",
 				code: "0815",
 			});
+
+			const newTitle = "new title";
+
+			const updateDoc = {
+				_id: insertDoc._id,
+				$set: {
+					title: newTitle,
+					description: insertDoc.description,
+					code: insertDoc.code,
+				}
+			};
 			const docId = insertDoc._id;
 			const oldTitle = insertDoc.title;
-			insertDoc.title = "new title";
 
-
-			testMethodDefaults(updateMethod, userId, insertDoc);
+			testMethodDefaults(updateMethod, userId, updateDoc);
 
 			// default expected behavior
-			updateMethod._execute({userId}, insertDoc);
+			updateMethod._execute({userId}, updateDoc);
 
 			const updatedDoc = DummyCollection.findOne(docId);
 
-			MochaHelpers.isDefined(updatedDoc, 'object');
-			assert.equal(updatedDoc.title, insertDoc.title);
+			MochaHelpers.isDefined(updatedDoc, MochaHelpers.OBJECT);
+			assert.equal(updatedDoc.title, newTitle);
 			assert.notEqual(updatedDoc.title, oldTitle)
 		});
 
@@ -275,7 +284,7 @@ if (Meteor.isServer) {
 
 			//user not registered
 			assert.throws(function () {
-				countMethod._execute({userId: userId}, {weirdProp:false});
+				countMethod._execute({userId: userId}, {weirdProp: false});
 			}, MethodFactory.errors.WRONG_ARGUMENTS);
 
 			const expectedIntialCount = DummyCollection.find().count();
